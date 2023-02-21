@@ -393,6 +393,9 @@ function zdb_get_data($page)
     // get the data for the references
     foreach ($data as $key => $row) {
         foreach ($page["fields"] as $field) {
+            // skip empty fields
+            if (empty($row[$field['name']]))
+                continue;
             if (isset($field['to'])) {
                 $ref_page = zdb_page_by_slug($field['to']['type']);
                 $prepared = $wpdb->prepare("SELECT " . $ref_page["preview_fields"][0] . " FROM " . $ref_page["table"] . " WHERE id = %d", $row[$field['name'] . "Id"]);
