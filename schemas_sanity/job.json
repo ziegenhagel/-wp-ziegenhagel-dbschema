@@ -1,0 +1,137 @@
+{
+  "name": "job",
+  "title": "Job",
+  "type": "document",
+  "initialValue": {
+    "severity": "low"
+  },
+  "fields": [
+    {
+      "name": "title",
+      "title": "Title",
+      "description": "The title of the job",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "name": "description",
+      "description": "Eine kurze Beschreibung des Jobs",
+      "required": true,
+      "title": "Beschreibung",
+      "type": "text"
+    },
+    {
+      "name": "extra",
+      "description": "Extra Text, der an entsprechender Stelle fettgedruckt in die Mail eingefügt wird.",
+      "title": "Extra-Text in der E-Mail Vorlage",
+      "type": "text"
+    },
+    {
+      "name": "email",
+      "title": "Email",
+      "required": true,
+      "description": "Hier eine oder mehrere Email Adresse angeben => Connect me button verwendet diese Adresse(n). Hier keine Email angegeben = Connect me button verwendet die Email Adresse der Gruppe(n)",
+      "type": "array",
+      "of": [
+        {
+          "type": "email"
+        }
+      ]
+    },
+    {
+      "name": "poster",
+      "title": "Poster Image",
+      "description": "Querformat, wird auf 450x900px zugeschnitten",
+      "required": true,
+      "type": "image",
+      "options": {
+        "hotspot": true
+      }
+    },
+    {
+      "name": "severity",
+      "title": "Risiko",
+      "required": true,
+      "description": "Was riskiere ich mit diesem Job? (Low = nicht gefährlich, Medium = Z.B: bei Polizeikontakt, High = GeSa und Körperverletzung ist möglich)",
+      "type": "string",
+      "options": {
+        "list": [
+          "low",
+          "medium",
+          "high"
+        ]
+      }
+    },
+    {
+      "name": "decisions",
+      "description": "Entscheidungen die zu diesem Job führen",
+      "title": "Passende Entscheidungen",
+      "required": true,
+      "type": "array",
+      "of": [
+        {
+          "type": "decision"
+        }
+      ]
+    },
+    {
+      "name": "groups",
+      "description": "Gruppen, die zugewiesen werden können",
+      "required": true,
+      "title": "Gruppe",
+      "type": "array",
+      "of": [
+        {
+          "type": "reference",
+          "to": [
+            {
+              "type": "group"
+            }
+          ]
+        }
+      ],
+      "validation": {}
+    },
+    {
+      "name": "localgroups",
+      "description": "Gruppen in der Region",
+      "title": "Ortsgruppen",
+      "type": "array",
+      "of": [
+        {
+          "type": "reference",
+          "to": [
+            {
+              "type": "localgroup"
+            }
+          ]
+        }
+      ],
+      "validation": {}
+    },
+    {
+      "title": "Startdatum",
+      "name": "startDate",
+      "description": "Datum an dem die Veranstaltung beginnt.",
+      "type": "date",
+      "options": {
+        "dateFormat": "DD.MM.YYYY"
+      }
+    },
+    {
+      "title": "Enddatum",
+      "name": "endDate",
+      "description": "Datum, an dem die Veranstaltung beendet wird. Falls es eh nur einen Tag geht, einfach leer lassen.",
+      "type": "date",
+      "options": {
+        "dateFormat": "DD.MM.YYYY"
+      }
+    }
+  ],
+  "preview": {
+    "select": {
+      "title": "title",
+      "media": "image"
+    }
+  }
+}

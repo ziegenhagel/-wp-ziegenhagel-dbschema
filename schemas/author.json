@@ -1,0 +1,120 @@
+{
+  "name": "author",
+  "title": "Autor",
+  "type": "document",
+  "fields": [
+    {
+      "name": "flname",
+      "title": "Vor und Nachname",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "lieblingsgenre",
+      "title": "Lieblingsgenre",
+      "type": "enum",
+      "options": [
+        "Krimi",
+        "Fantasy",
+        "Horror",
+        "Roman",
+        "Kinderbuch",
+        "Biografie",
+        "Kochbuch",
+        "Geschichte",
+        "Gesundheit",
+        "Reise",
+        "Sport",
+        "Wissenschaft",
+        "Wirtschaft",
+        "Sonstiges"
+      ]
+    },
+    {
+      "name": "lieblingsbuch",
+      "title": "Lieblingsbuch",
+      "type": "reference",
+      "to": {
+        "type": "book"
+      }
+    },
+    {
+      "name": "favouriteWords",
+      "title": "Lieblingswort",
+      "type": "array",
+      "of": {
+        "type": "text"
+      }
+    },
+    {
+      "name": "favouriteBooks",
+      "title": "Lieblingsbücher",
+      "type": "array",
+      "of": {
+        "type": "reference",
+        "to": {
+          "type": "book"
+        }
+      }
+    },
+    {
+      "name": "contactOptions",
+      "title": "Kontaktmöglichkeiten",
+      "type": "array",
+      "of": {
+        "type": "object",
+        "fields": [
+          {
+            "name": "contactType",
+            "title": "Kontaktart",
+            "type": "enum",
+            "options": [
+              "Telefon",
+              "E-Mail",
+              "Post",
+              "Fax"
+            ]
+          },
+          {
+            "name": "icons",
+            "title": "Icons",
+            "type": "array",
+            "of": {
+              "type": "object",
+              "fields": [
+                {
+                  "name": "icon",
+                  "title": "Icon",
+                  "type": "image"
+                },
+                {
+                  "name": "iconText",
+                  "title": "Icon Text",
+                  "type": "text"
+                },
+                {
+                  "name": "platform",
+                  "title": "Plattform",
+                  "type": "enum",
+                  "options": [
+                    "Android",
+                    "iOS",
+                    "Windows",
+                    "Linux",
+                    "MacOS",
+                    "Sonstiges"
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "name": "contactValue",
+            "title": "Kontaktwert",
+            "type": "text"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "name": "condition",
+  "title": "Zustand",
+  "type": "object",
+  "fields": [
+    {
+      "name": "question",
+      "title": "Entscheidung",
+      "type": "reference",
+      "required": true,
+      "to": [
+        {
+          "type": "question"
+        }
+      ]
+    },
+    {
+      "name": "agreement",
+      "title": "Grad der Zustimmung",
+      "type": "array",
+      "required": true,
+      "of": [
+        {
+          "type": "number"
+        }
+      ],
+      "options": {
+        "list": [
+          {
+            "title": "Nein",
+            "value": -1
+          },
+          {
+            "title": "Neutral",
+            "value": 0
+          },
+          {
+            "title": "Ja",
+            "value": 1
+          },
+          {
+            "title": "Ja!!!",
+            "value": 2
+          }
+        ]
+      }
+    }
+  ],
+  "preview": {
+    "select": {
+      "title": "question.title",
+      "media": "question.poster"
+    }
+  }
+}

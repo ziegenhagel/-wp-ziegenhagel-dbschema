@@ -1,0 +1,36 @@
+{
+  "name": "book",
+  "title": "Buch",
+  "fields": [
+    {
+      "name": "title",
+      "title": "Title",
+      "type": "text",
+      "required": true
+    },
+    {
+      "name": "author",
+      "title": "Author",
+      "type": "reference",
+      "to": {
+        "type": "author"
+      }
+    },
+    {
+      "name": "publishedAt",
+      "title": "Published at",
+      "type": "datetime",
+      "required": true
+    },
+    {
+      "name": "mainImage",
+      "title": "Main image",
+      "type": "image"
+    },
+    {
+      "name": "body",
+      "title": "Body",
+      "type": "wysiwyg"
+    }
+  ]
+}

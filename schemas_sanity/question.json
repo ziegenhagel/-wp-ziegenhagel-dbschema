@@ -1,0 +1,51 @@
+{
+    "name":"question",
+    "title":"Frage",
+    "initialValue":{
+    "order":50
+},
+    "type":"document",
+    "fields":[
+    {
+        "name":"title",
+        "title":"Title",
+        "type":"string",
+        "required":true
+    },
+    {
+        "name":"order",
+        "title":"Gewichtung für die Reihenfolge",
+        "description":"Kleinere Zahl bedeutet geringere Gewichtung, daher wird die Frage in der Reihenfolge nach der Gewichtung sortiert.",
+        "type":"number"
+    },
+    {
+        "name":"description",
+        "title":"Beschreibung",
+        "type":"text"
+    },
+    {
+        "name":"poster",
+        "title":"Poster Image",
+        "type":"image",
+        "description":"Hochformat, wird später auf 900x1100px ausgerendert.",
+        "options":{
+            "hotspot":true
+        }
+    },
+    {
+        "name":"conditions",
+        "title":"Erforderliche vorherige Antworten",
+        "type":"array",
+        "of":[
+            {
+                "type":"condition"
+            }
+        ]
+    }
+],
+    "preview":{
+    "select":{
+        "title":"title"
+    }
+}
+}
