@@ -377,7 +377,13 @@ function zdb_render_page($page)
     extract($page);
 
     // render the page
-    require_once('views/page.php');
+    if (isset($_GET['action']) && $_GET['action'] == 'edit')
+        require_once('views/edit.php');
+    else
+        require_once('views/list.php');
+
+    // load the style sheet
+    wp_enqueue_style('zdb', plugins_url('render_page.css', __FILE__));
 }
 
 // get the data from the database

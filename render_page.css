@@ -1,0 +1,11 @@
+label {
+    display: block;
+    margin-bottom: 5px;
+    margin-top: 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+label span.description {
+    color: #9f9f9f;
+}

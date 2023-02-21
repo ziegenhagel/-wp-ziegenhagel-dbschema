@@ -44,10 +44,10 @@ foreach ($data as $key => $row) {
         if ($index == 0) {
             echo "<td class='title column-title has-row-actions column-primary page-title' data-colname='Title'>";
             echo "<strong>";
-            echo "<a class='row-title' href='?page=" . $_GET["page"] . "&id=" . $row["id"] . "'>" . $row[$col] . "</a>";
+            echo "<a class='row-title' href='?page=" . $_GET["page"] . "&id=" . $row["id"] . "&action=edit'>" . $row[$col] . "</a>";
             echo "</strong>";
             echo "<div class='row-actions'>";
-            echo "<span class='edit'><a href='?page=" . $_GET["page"] . "&id=" . $row["id"] . "'>" . __("Edit") . "</a></span> | ";
+            echo "<span class='edit'><a href='?page=" . $_GET["page"] . "&id=" . $row["id"] . "&action=edit'>" . __("Edit") . "</a></span> | ";
             echo "<span class='trash'><a href='?page=" . $_GET["page"] . "&id=" . $row["id"] . "&action=delete'>" . __("Delete") . "</a></span>";
             echo "</div>";
 
