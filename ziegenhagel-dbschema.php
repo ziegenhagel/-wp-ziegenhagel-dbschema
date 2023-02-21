@@ -374,13 +374,14 @@ function zdb_render_page($page)
     // get the data
     $data = zdb_get_data($page);
 
-    extract($page);
-
     // render the page
-    if (isset($_GET['action']) && $_GET['action'] == 'edit')
+    if (isset($_GET['action']) && $_GET['action'] == 'edit') {
         require_once('views/edit.php');
-    else
+    } else if ($_GET["page"] == $page['slug'] . "-add") {
+        require_once('views/edit.php');
+    } else {
         require_once('views/list.php');
+    }
 
     // load the style sheet
     wp_enqueue_style('zdb', plugins_url('render_page.css', __FILE__));
@@ -413,6 +414,7 @@ function zdb_get_data($page)
     return $data;
 }
 
+
 function zdb_page_by_slug($type)
 {
     global $pages;
@@ -421,6 +423,55 @@ function zdb_page_by_slug($type)
         if ($page['slug'] === $type) {
             return $page;
         }
+    }
+}
+
+// a function that takes a field description and returns the html for the input field
+function zdb_render_field($field, $data = null)
+{
+
+    $name = $field["name"];
+    // if field is a text input
+    if ($field["type"] == "text") {
+        echo "<input type='text' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "' size='40' aria-required='true' autocapitalize='none' autocorrect='off' maxlength='60'>";
+    } // if field is a textarea
+    else if ($field["type"] == "textarea") {
+        echo "<textarea name='" . $name . "' id='" . $name . "' rows='5' cols='40'>" . ($field["value"] ?? "") . "</textarea>";
+    } // if field is a wysiwyg
+    else if ($field["type"] == "wysiwyg") {
+        wp_editor(($field["value"] ?? ""), $name, array(
+            "textarea_name" => $name,
+            "textarea_rows" => 10,
+            "media_buttons" => false,
+            "teeny" => true,
+            "quicktags" => false,
+        ));
+    } // if field is a date
+    else if ($field["type"] == "date") {
+        echo "<input type='date' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "' size='40' aria-required='true' autocapitalize='none' autocorrect='off' maxlength='60'>";
+    } // if field is a time
+    else if ($field["type"] == "time") {
+        echo "<input type='time' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "' size='40' aria-required='true' autocapitalize='none' autocorrect='off' maxlength='60'>";
+    } // if field is a datetime
+    else if ($field["type"] == "datetime") {
+        echo "<input type='datetime-local' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "' size='40' aria-required='true' autocapitalize='none' autocorrect='off' maxlength='60'>";
+    } // if field is an image use the wp mediathek medie uploader and show a mini preview
+    else if ($field["type"] == "image") {
+        echo "<input type='hidden' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "'>";
+        echo "<img src='" . ($field["value"] ?? "") . "' style='max-width: 100px;'>";
+        echo "<input type='button' class='button button-primary' value='Bild auswählen' onclick='wp.media.editor.send.attachment = function(props, attachment) { jQuery(\"#" . $name . "\").val(attachment.url); }; wp.media.editor.open(this); return false;'>";
+    } // if field is a select
+    else if ($field["type"] == "enum") {
+        echo "<select name='" . $name . "' id='" . $name . "'>";
+        foreach ($field["options"] as $option) {
+            echo "<option value='" . $option . "'>" . $option . "</option>";
+        }
+        echo "</select>";
+    } // if field is a checkbox
+    else if ($field["type"] == "checkbox") {
+        echo "<input type='checkbox' name='" . $name . "' id='" . $name . "' value='1'>";
+    } else {
+        echo "Field type not found.";
     }
 }
 
