@@ -1,7 +1,14 @@
 {
   "name": "author",
   "title": "Autor",
-  "preview": "flname",
+  "titlePlural": "Autoren",
+  "preview_fields": [
+    "flname"
+  ],
+  "wordpress": {
+    "menu_icon": "dashicons-admin-users",
+    "menu_position": 10
+  },
   "fields": [
     {
       "name": "flname",

@@ -10,19 +10,21 @@
 
 // get plugin version from the plugin header
 $plugin_data = get_file_data(__FILE__, array('Version' => 'Version'), false);
-$zdb_version = $plugin_data['Version'];
+$version = $plugin_data['Version'];
 
 // load the list of schemas_sanity from schemas/*.json
 $schemas = array_map(function ($file) {
     return basename($file, '.json');
 }, glob(__DIR__ . '/schemas/*.json'));
 
+$pages = [];
+
 // db prefix
 /** @var TYPE_NAME $wpdb */
 $prefix = $wpdb->prefix . 'zdb_';
 
 // create the database tables
-$zdb_tables = [];
+$tables = [];
 
 $registered_types = [];
 
@@ -40,8 +42,22 @@ foreach ($schemas as $schema) {
 
     // push the table object to the tables array
     $fields = zdb_fields_to_sql_object($schema['fields'], $table_name);
-    zdb_register_new_table($table_name . "s", $fields);
 
+    // register the table
+    $table_name = $table_name . "s";
+    zdb_register_new_table($table_name, $fields);
+
+    // register for the admin menu
+    $pages[] = [
+        "title" => $schema['title'],
+        "titlePlural" => $schema['titlePlural'],
+        "preview_fields" => $schema['preview_fields'],
+        "table" => $table_name,
+        "slug" => $schema['name'],
+        "wordpress" => $schema['wordpress'] ?? [],
+        "fields" => $schema['fields'],
+        "columns" => $fields,
+    ];
 }
 
 function zdb_fields_to_sql_object($fields, $table_name)
@@ -126,7 +142,7 @@ function zdb_apply_field_array(&$sql_object, $field, $table_name)
 
     // make the field a reference to the new table
     $sql_object['_resolved'] = true;
-    $sql_object = null;
+    // $sql_object = null;
 
     // we want an array? so we need a new table schema, referencing the current table via id and connecting to the referenced table or embedding the content
     // we need to know the name of the current table, the name of the referenced table and the name of the new table
@@ -167,7 +183,7 @@ function zdb_apply_field_object(&$sql_object, $fields, $table_name)
 
 function zdb_register_new_table($table_name, $fields = [])
 {
-    global $schemas, $zdb_tables;
+    global $schemas, $tables;
 
     // check if the table already exists
     if (in_array($table_name, $schemas))
@@ -185,7 +201,7 @@ function zdb_register_new_table($table_name, $fields = [])
     array_unshift($fields, $id_field);
 
     $schemas[] = $table_name;
-    $zdb_tables[$table_name] = $fields;
+    $tables[$table_name] = $fields;
 
 }
 
@@ -224,7 +240,7 @@ function zdb_create_sql_statement($table_name, $fields)
 
     // add the fields
     foreach ($fields as $field) {
-        if ($field === null)
+        if ($field['_resolved'] === true)
             continue;
         $sql_statement .= '  ' . zdb_create_sql_field($field) . PHP_EOL;
     }
@@ -272,25 +288,136 @@ function zdb_create_sql_field($field)
 
 // output the tables as json
 // echo '<pre>';
-// echo json_encode($zdb_tables, JSON_PRETTY_PRINT);
+// echo json_encode($tables, JSON_PRETTY_PRINT);
 // echo '</pre>';
 
 function zdb_install()
 {
-    global $zdb_version, $zdb_tables;
+    global $version, $tables;
 
     require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-    dbDelta(zdb_create_sql_statements($zdb_tables));
+    dbDelta(zdb_create_sql_statements($tables));
 
-    update_option('zdb_version', $zdb_version);
+    update_option('zdb_version', $version);
 }
 
 function zdb_update_db_check()
 {
-    global $zdb_version;
-    if (get_option('zdb_version') != $zdb_version) {
+    global $version;
+    if (get_option('zdb_version') != $version) {
         zdb_install();
     }
 }
 
 add_action('plugins_loaded', 'zdb_update_db_check');
+
+function zdb_admin_menu()
+{
+    global $pages;
+
+    // add the menu page for each schema
+    foreach ($pages as $page) {
+
+        $options = $page["wordpress"];
+
+
+        // add the menu page
+        add_menu_page(
+            $page['title'],
+            $page['title'],
+            $options['capability'] ?? 'manage_options',
+            $page['slug'],
+            $function = function () use ($page) {
+                zdb_render_page($page);
+            },
+            $options['menu_icon'],
+            $options['menu_position'] ?? 100
+        );
+
+        // add submenu pages for Alle and Neu
+        add_submenu_page(
+            $page['slug'],
+            $page['titlePlural'],
+            'Alle ' . $page['titlePlural'],
+            $options['capability'] ?? 'manage_options',
+            $page['slug'],
+            $function = function () use ($page) {
+                zdb_render_page($page);
+            }
+        );
+
+        add_submenu_page(
+            $page['slug'],
+            $page["title"] . " hinzufügen",
+            "Hinzufügen",
+            $options['capability'] ?? 'manage_options',
+            $page['slug'] . "-add",
+            $function = function () use ($page) {
+                zdb_render_page($page);
+            }
+        );
+
+    }
+}
+
+// render page
+function zdb_render_page($page)
+{
+    global $tables;
+
+    // get the table name
+    $table_name = $page['table'];
+
+    // get the fields
+    $fields = $tables[$table_name];
+
+    // get the data
+    $data = zdb_get_data($page);
+
+    extract($page);
+
+    // render the page
+    require_once('views/page.php');
+}
+
+// get the data from the database
+function zdb_get_data($page)
+{
+    global $wpdb, $prefix, $fields, $schemas, $pages;
+
+    $table_name = $page['table'];
+
+    // get the data and fetch the references as well
+    $data = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
+
+    // get the data for the references
+    foreach ($data as $key => $row) {
+        foreach ($page["fields"] as $field) {
+            if (isset($field['to'])) {
+                $ref_page = zdb_page_by_slug($field['to']['type']);
+                $prepared = $wpdb->prepare("SELECT " . $ref_page["preview_fields"][0] . " FROM " . $ref_page["table"] . " WHERE id = %d", $row[$field['name'] . "Id"]);
+                $data[$key][$field['name']] = $wpdb->get_col($prepared)[0] ?? "—";
+            }
+        }
+    }
+
+    return $data;
+}
+
+function zdb_page_by_slug($type)
+{
+    global $pages;
+
+    foreach ($pages as $page) {
+        if ($page['slug'] === $type) {
+            return $page;
+        }
+    }
+}
+
+// register all the pages for backend
+add_action('admin_menu', 'zdb_admin_menu');
+
+// register the activation hook
+register_activation_hook(__FILE__, 'zdb_install');
+

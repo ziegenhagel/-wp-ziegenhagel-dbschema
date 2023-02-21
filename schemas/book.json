@@ -1,7 +1,12 @@
 {
   "name": "book",
   "title": "Buch",
-  "preview": "title",
+  "titlePlural": "Bücher",
+  "preview_fields": ["title", "author", "publishedAt"],
+  "wordpress": {
+    "menu_icon": "dashicons-book-alt",
+    "menu_position": 20
+  },
   "fields": [
     {
       "name": "title",
