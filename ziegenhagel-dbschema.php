@@ -2,11 +2,15 @@
 /**
  * Plugin Name: Ziegenhagel DBSchema
  * Description: A plugin for creating a database schema
- * Version: 1.0.0
+ * Version: 0.0.2
  * Author: Ziegenhagel
  * Author URI: https://ziegenhagel.com
  * Text Domain: zdb
  */
+
+// get plugin version from the plugin header
+$plugin_data = get_file_data(__FILE__, array('Version' => 'Version'), false);
+$zdb_version = $plugin_data['Version'];
 
 // load the list of schemas_sanity from schemas/*.json
 $schemas = array_map(function ($file) {
@@ -18,7 +22,7 @@ $schemas = array_map(function ($file) {
 $prefix = $wpdb->prefix . 'zdb_';
 
 // create the database tables
-$tables = [];
+$zdb_tables = [];
 
 $registered_types = [];
 
@@ -61,10 +65,10 @@ function zdb_field_to_sql_object($field, $table_name)
     // remove the s at the end
     $fallback_name = preg_replace('/s$/', '', $fallback_name);
 
-    $sql_object['name'] = zdb_validate_fieldname($field['name']) ?? $fallback_name;
+    $sql_object['name'] = zdb_validate_fieldname($field['name'] ?? $fallback_name);
     $sql_object['type'] = $field['type'];
-    $sql_object['default'] = $field['default'];
-    $sql_object['required'] = $field['required'];
+    $sql_object['default'] = $field['default'] ?? '';
+    $sql_object['required'] = $field['required'] ?? false;
 
     if ($field['type'] === 'text') {
         $sql_object['length'] = 250;
@@ -163,7 +167,7 @@ function zdb_apply_field_object(&$sql_object, $fields, $table_name)
 
 function zdb_register_new_table($table_name, $fields = [])
 {
-    global $schemas, $tables;
+    global $schemas, $zdb_tables;
 
     // check if the table already exists
     if (in_array($table_name, $schemas))
@@ -181,7 +185,7 @@ function zdb_register_new_table($table_name, $fields = [])
     array_unshift($fields, $id_field);
 
     $schemas[] = $table_name;
-    $tables[$table_name] = $fields;
+    $zdb_tables[$table_name] = $fields;
 
 }
 
@@ -214,7 +218,9 @@ function zdb_create_sql_statements($tables)
 
 function zdb_create_sql_statement($table_name, $fields)
 {
-    $sql_statement = "CREATE TABLE IF NOT EXISTS `" . $table_name . "` (" . PHP_EOL;
+    global $wpdb;
+
+    $sql_statement = "CREATE TABLE `" . $table_name . "` (" . PHP_EOL; //  IF NOT EXISTS
 
     // add the fields
     foreach ($fields as $field) {
@@ -226,7 +232,7 @@ function zdb_create_sql_statement($table_name, $fields)
     // remove the last PHP_EOL and comma
     $sql_statement = substr($sql_statement, 0, -3);
 
-    $sql_statement .= PHP_EOL . ");" . PHP_EOL;
+    $sql_statement .= PHP_EOL . ")" . $wpdb->get_charset_collate() . ";" . PHP_EOL;
 
     return $sql_statement;
 }
@@ -251,7 +257,7 @@ function zdb_create_sql_field($field)
         $sql_field .= " PRIMARY KEY";
 
     // default value
-    if (isset($field['default']))
+    if ($field['default'])
         $sql_field .= " DEFAULT '" . $field['default'] . "'";
 
     // if the field is a reference to another table, add the foreign key
@@ -265,9 +271,26 @@ function zdb_create_sql_field($field)
 }
 
 // output the tables as json
-echo '<pre>';
-echo zdb_create_sql_statements($tables);
-echo json_encode($tables, JSON_PRETTY_PRINT);
-echo '</pre>';
+// echo '<pre>';
+// echo json_encode($zdb_tables, JSON_PRETTY_PRINT);
+// echo '</pre>';
 
-die();
+function zdb_install()
+{
+    global $zdb_version, $zdb_tables;
+
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    dbDelta(zdb_create_sql_statements($zdb_tables));
+
+    update_option('zdb_version', $zdb_version);
+}
+
+function zdb_update_db_check()
+{
+    global $zdb_version;
+    if (get_option('zdb_version') != $zdb_version) {
+        zdb_install();
+    }
+}
+
+add_action('plugins_loaded', 'zdb_update_db_check');

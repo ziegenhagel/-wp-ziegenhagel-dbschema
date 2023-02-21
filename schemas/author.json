@@ -1,7 +1,7 @@
 {
   "name": "author",
   "title": "Autor",
-  "type": "document",
+  "preview": "flname",
   "fields": [
     {
       "name": "flname",
