@@ -14,7 +14,8 @@ $schemas = array_map(function ($file) {
 }, glob(__DIR__ . '/schemas/*.json'));
 
 // db prefix
-$prefix = 'wp_zdb_';
+/** @var TYPE_NAME $wpdb */
+$prefix = $wpdb->prefix . 'zdb_';
 
 // create the database tables
 $tables = [];
@@ -34,27 +35,33 @@ foreach ($schemas as $schema) {
     $table_name = $prefix . $schema['name'];
 
     // push the table object to the tables array
-    $fields = fields_to_sql_object($schema['fields'], $table_name);
-    register_new_table($table_name, $fields);
+    $fields = zdb_fields_to_sql_object($schema['fields'], $table_name);
+    zdb_register_new_table($table_name . "s", $fields);
 
 }
 
-function fields_to_sql_object($fields, $table_name)
+function zdb_fields_to_sql_object($fields, $table_name)
 {
     $sql_object = [];
 
     foreach ($fields as $field) {
-        $sql_object[] = field_to_sql_object($field, $table_name);
+        $sql_object[] = zdb_field_to_sql_object($field, $table_name);
     }
 
     return $sql_object;
 }
 
-function field_to_sql_object($field, $table_name)
+function zdb_field_to_sql_object($field, $table_name)
 {
     $sql_object = [];
 
-    $sql_object['name'] = validate_fieldname($field['name']);
+    // the fallback name for wp_zdb_author_favouriteWords is favouriteWords
+    $fallback_name = preg_replace('/^.*_/', '', $table_name);
+
+    // remove the s at the end
+    $fallback_name = preg_replace('/s$/', '', $fallback_name);
+
+    $sql_object['name'] = zdb_validate_fieldname($field['name']) ?? $fallback_name;
     $sql_object['type'] = $field['type'];
     $sql_object['default'] = $field['default'];
     $sql_object['required'] = $field['required'];
@@ -62,30 +69,33 @@ function field_to_sql_object($field, $table_name)
     if ($field['type'] === 'text') {
         $sql_object['length'] = 250;
     } else if ($field['type'] === 'image') {
-        $sql_object['type'] = 'int(11)';
-        $sql_object['name'] = $field['name'].'_attachmentId';
+        $sql_object['type'] = 'int';
+        $sql_object['name'] = $field['name'] . '_attachmentId';
         $sql_object['length'] = 11;
+    } else if ($field['type'] === 'wysiwyg') {
+        $sql_object['type'] = 'text';
+        $sql_object['length'] = 10000;
     } else if ($field['type'] === 'number') {
-        $sql_object['type'] = 'int(11)';
+        $sql_object['type'] = 'int';
         $sql_object['length'] = 11;
     } else if ($field['type'] === 'boolean') {
-        $sql_object['type'] = 'tinyint(1)';
+        $sql_object['type'] = 'tinyint';
         $sql_object['length'] = 1;
     } else if ($field['type'] === 'enum') {
         $sql_object['type'] = 'enum';
         $sql_object['options'] = $field['options'];
     } else if ($field['type'] === 'reference') {
-        apply_field_reference($sql_object, $field);
+        zdb_apply_field_reference($sql_object, $field);
     } else if ($field['type'] === 'array') {
-        apply_field_array($sql_object, $field, $table_name);
+        zdb_apply_field_array($sql_object, $field, $table_name);
     } else if ($field['type'] === 'object') {
-        apply_field_object($sql_object, $field, $table_name);
+        zdb_apply_field_object($sql_object, $field, $table_name);
     }
 
     return $sql_object;
 }
 
-function apply_field_reference(&$sql_object, $field)
+function zdb_apply_field_reference(&$sql_object, $field)
 {
     if ($field['type'] !== 'reference')
         return "Field is not a reference";
@@ -93,44 +103,44 @@ function apply_field_reference(&$sql_object, $field)
     // do we know this type? is it a book, is it an author?
     global $schemas;
     if (in_array($field['to']['type'], $schemas)) {
-        $sql_object['type'] = 'int(11)';
+        $sql_object['type'] = 'int';
         $sql_object['name'] = $field['to']['type'] . 'Id';
     } else {
         echo "Reference type '" . $field['to']['type'] . "' not found in schemas";
     }
 }
 
-function apply_field_array(&$sql_object, $field, $table_name)
+function zdb_apply_field_array(&$sql_object, $field, $table_name)
 {
     if ($field['type'] !== 'array')
         return "Field is not an array";
 
     // create a new table name and get the fields for the new table
-    $new_table_name = $table_name . "_" . validate_fieldname($field['name']);
+    $new_table_name = $table_name . "_" . zdb_validate_fieldname($field['name']);
 
-    $fields[] = field_to_sql_object($field["of"], $new_table_name);
+    $fields[] = zdb_field_to_sql_object($field["of"], $new_table_name);
 
     // make the field a reference to the new table
     $sql_object['_resolved'] = true;
-    // $sql_object = null;
+    $sql_object = null;
 
     // we want an array? so we need a new table schema, referencing the current table via id and connecting to the referenced table or embedding the content
     // we need to know the name of the current table, the name of the referenced table and the name of the new table
     global $prefix;
 
     if ($field['of']['type'] !== 'object')
-        register_new_table($new_table_name, $fields);
+        zdb_register_new_table($new_table_name, $fields);
 
 }
 
-function apply_field_object(&$sql_object, $fields, $table_name)
+function zdb_apply_field_object(&$sql_object, $fields, $table_name)
 {
     if ($fields['type'] !== 'object')
         return "Field is not an object";
 
     // create a new table name and get the fields for the new table
     $new_table_name = $table_name;
-    $fields = fields_to_sql_object($fields["fields"], $new_table_name);
+    $fields = zdb_fields_to_sql_object($fields["fields"], $new_table_name);
 
     // make the field a reference to the table it belongs to
     global $prefix;
@@ -139,19 +149,19 @@ function apply_field_object(&$sql_object, $fields, $table_name)
     $clean_table_name = preg_replace('/_[^_]+$/', '', $clean_table_name);
     $fields[] = [
         'name' => $clean_table_name . 'Id',
-        'type' => 'int(11)',
+        'type' => 'int',
         'required' => true,
     ];
 
     // we want an array? so we need a new table schema, referencing the current table via id and connecting to the referenced table or embedding the content
     // we need to know the name of the current table, the name of the referenced table and the name of the new table
     global $prefix;
-    register_new_table($new_table_name, $fields);
+    zdb_register_new_table($new_table_name, $fields);
 
 }
 
 
-function register_new_table($table_name, $fields = [])
+function zdb_register_new_table($table_name, $fields = [])
 {
     global $schemas, $tables;
 
@@ -162,20 +172,20 @@ function register_new_table($table_name, $fields = [])
     // add the id field to the beginning of the fields array
     $id_field = [
         'name' => 'id',
-        'type' => 'int(11)',
+        'type' => 'int',
         'required' => true,
         'length' => 11,
         'auto_increment' => true,
         'primary_key' => true
     ];
-    // array_unshift($fields, $id_field); // TODO uncomment this
+    array_unshift($fields, $id_field);
 
     $schemas[] = $table_name;
     $tables[$table_name] = $fields;
 
 }
 
-function validate_fieldname($field_name)
+function zdb_validate_fieldname($field_name)
 {
     if (in_array($field_name, ['id', 'type', 'name', 'default', 'length', 'options', 'required', 'auto_increment', 'primary_key']))
         die("Field name '" . $field_name . "' is not allowed");
@@ -191,8 +201,72 @@ function validate_fieldname($field_name)
     return $field_name;
 }
 
+function zdb_create_sql_statements($tables)
+{
+    $sql_statements = [];
+
+    foreach ($tables as $table_name => $fields) {
+        $sql_statements[] = zdb_create_sql_statement($table_name, $fields);
+    }
+
+    return implode(PHP_EOL, $sql_statements);
+}
+
+function zdb_create_sql_statement($table_name, $fields)
+{
+    $sql_statement = "CREATE TABLE IF NOT EXISTS `" . $table_name . "` (" . PHP_EOL;
+
+    // add the fields
+    foreach ($fields as $field) {
+        if ($field === null)
+            continue;
+        $sql_statement .= '  ' . zdb_create_sql_field($field) . PHP_EOL;
+    }
+
+    // remove the last PHP_EOL and comma
+    $sql_statement = substr($sql_statement, 0, -3);
+
+    $sql_statement .= PHP_EOL . ");" . PHP_EOL;
+
+    return $sql_statement;
+}
+
+function zdb_create_sql_field($field)
+{
+    $sql_field = "`" . $field['name'] . "` " . $field['type'];
+
+    if (isset($field['options']))
+        $sql_field .= "('" . implode("','", $field['options']) . "')";
+
+    else if (isset($field['length']))
+        $sql_field .= "(" . $field['length'] . ")";
+
+    if (isset($field['required']) && $field['required'] === true)
+        $sql_field .= " NOT NULL";
+
+    if (isset($field['auto_increment']) && $field['auto_increment'] === true)
+        $sql_field .= " AUTO_INCREMENT";
+
+    if (isset($field['primary_key']) && $field['primary_key'] === true)
+        $sql_field .= " PRIMARY KEY";
+
+    // default value
+    if (isset($field['default']))
+        $sql_field .= " DEFAULT '" . $field['default'] . "'";
+
+    // if the field is a reference to another table, add the foreign key
+    if (isset($field['to'])) {
+        $sql_field .= ", FOREIGN KEY (`" . $field['name'] . "`) REFERENCES `" . $field['to']['table'] . "`(`id`)";
+    }
+
+    $sql_field .= ", ";
+
+    return $sql_field;
+}
+
 // output the tables as json
 echo '<pre>';
+echo zdb_create_sql_statements($tables);
 echo json_encode($tables, JSON_PRETTY_PRINT);
 echo '</pre>';
 
