@@ -394,12 +394,12 @@ function zdb_get_data($page)
     foreach ($data as $key => $row) {
         foreach ($page["fields"] as $field) {
             // skip empty fields
-            if (empty($row[$field['name']]))
+            if (empty($row[$field['name']]) && empty($row[$field['name'] . "Id"]))
                 continue;
             if (isset($field['to'])) {
                 $ref_page = zdb_page_by_slug($field['to']['type']);
                 $prepared = $wpdb->prepare("SELECT " . $ref_page["preview_fields"][0] . " FROM " . $ref_page["table"] . " WHERE id = %d", $row[$field['name'] . "Id"]);
-                $data[$key][$field['name']] = $wpdb->get_col($prepared)[0] ?? "—";
+                $data[$key][$field['name']] = $wpdb->get_col($prepared)[0];
             }
         }
     }

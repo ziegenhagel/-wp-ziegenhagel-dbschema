@@ -32,6 +32,10 @@ foreach ($data as $key => $row) {
     // for all preview_fields
     foreach ($page["preview_fields"] as $index => $col) {
 
+        if(empty($row[$col])) {
+            $row[$col] = "—";
+        }
+
         // if looks like a datetime (2023-02-21 19:14:26), format it
         if (preg_match("/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/", $row[$col])) {
             $row[$col] = date("d.m.Y \u\m H:i", strtotime($row[$col])) . " Uhr";
