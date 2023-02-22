@@ -512,13 +512,7 @@ function zdb_get_object($slug, $id)
     $object = $wpdb->get_row($prepared, ARRAY_A);
 
     // populate the references
-    foreach ($page["fields"] as $field) {
-        if (isset($field["to"])) {
-            $ref_page = zdb_page_by_slug($field["to"]["type"]);
-            $prepared = $wpdb->prepare("SELECT " . $ref_page["preview_fields"][0] . " FROM " . $ref_page["table"] . " WHERE id = %d", $object[$field["name"] . "Id"]);
-            $object[$field["name"]] = $wpdb->get_col($prepared)[0];
-        }
-    }
+    zdb_populate_references($object, $slug);
 
     return $object;
 }
