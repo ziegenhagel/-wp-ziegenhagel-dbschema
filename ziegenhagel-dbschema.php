@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Ziegenhagel DBSchema
  * Description: A plugin for creating a database schema
- * Version: 0.0.2
+ * Version: 0.0.4
  * Author: Ziegenhagel
  * Author URI: https://ziegenhagel.com
  * Text Domain: zdb
@@ -21,7 +21,6 @@ $pages = [];
 
 // db prefix
 /** @var TYPE_NAME $wpdb */
-$prefix = $wpdb->prefix . 'zdb_';
 
 // create the database tables
 $tables = [];
@@ -38,7 +37,7 @@ foreach ($schemas as $schema) {
     $schema = json_decode(file_get_contents($schemaFile), true);
 
     // add the table name to the table object
-    $table_name = $prefix . $schema['name'];
+    $table_name = zdb_tablename($schema['name']); // CAVE there didnt used to be a "s" appended
 
     // push the table object to the tables array
     $fields = zdb_fields_to_sql_object($schema['fields'], $table_name);
@@ -71,17 +70,19 @@ function zdb_fields_to_sql_object($fields, $table_name)
     return $sql_object;
 }
 
+function zdb_fieldname($table_name)
+{
+    // the fallback name for wp_zdb_author_favouriteWords is favouriteWords
+    $fallback_name = preg_replace('/^.*_/', '', $table_name);
+    $fallback_name = preg_replace('/s$/', '', $fallback_name);
+    return $fallback_name;
+}
+
 function zdb_field_to_sql_object($field, $table_name)
 {
     $sql_object = [];
 
-    // the fallback name for wp_zdb_author_favouriteWords is favouriteWords
-    $fallback_name = preg_replace('/^.*_/', '', $table_name);
-
-    // remove the s at the end
-    $fallback_name = preg_replace('/s$/', '', $fallback_name);
-
-    $sql_object['name'] = zdb_validate_fieldname($field['name'] ?? $fallback_name);
+    $sql_object['name'] = zdb_validate_fieldname($field['name'] ?? zdb_fieldname($table_name));
     $sql_object['type'] = $field['type'];
     $sql_object['default'] = $field['default'] ?? '';
     $sql_object['required'] = $field['required'] ?? false;
@@ -180,14 +181,43 @@ function zdb_apply_field_object(&$sql_object, $fields, $table_name)
 
 }
 
+/*
+$zdb_log = [];
+
+function clg($data)
+{
+    global $zdb_log;
+    $zdb_log[] = $data;
+}
+
+function print_clg()
+{
+    global $zdb_log;
+    echo "<pre style='margin-left:180px;margin-top:20px'>CLG:<br>";
+    print_r($zdb_log);
+    echo "</pre>";
+}
+
+// when admin page and all plugins are loaded, print the clg
+add_action('admin_body_class', 'print_clg');
+*/
 
 function zdb_register_new_table($table_name, $fields = [])
 {
     global $schemas, $tables;
 
-    // check if the table already exists
-    if (in_array($table_name, $schemas))
-        return;
+    // if we are having an acutual document table, we need to add the _status field
+    // add the _status field to the end of the fields array
+    // so do this only if its in the schemas array
+    if (in_array(zdb_slug($table_name), $schemas)) {
+        $status_field = [
+            'name' => '_status',
+            'type' => 'enum',
+            'required' => true,
+            'options' => ['publish', 'draft', 'inherit', 'trash']
+        ];
+        $fields[] = $status_field;
+    }
 
     // add the id field to the beginning of the fields array
     $id_field = [
@@ -200,7 +230,7 @@ function zdb_register_new_table($table_name, $fields = [])
     ];
     array_unshift($fields, $id_field);
 
-    $schemas[] = $table_name;
+    // $schemas[] = $table_name; // TODO clean
     $tables[$table_name] = $fields;
 
 }
@@ -375,11 +405,11 @@ function zdb_render_page($page)
 
     // render the page
     echo "<div class='wrap'>";
-    if (isset($_GET['action']) && $_GET['action'] == 'edit') {
+
+    $action = $_GET['action'] ?? null;
+    if ($action == 'edit') {
         require_once('views/edit.php');
-    } else if ($_GET["page"] == $page['slug'] . "-add") {
-        require_once('views/edit.php');
-    } else if ($_GET["page"] == $page['slug'] && $_GET["action"] == "delete") {
+    } else if ($action == "delete") {
 
         $success = $wpdb->delete($table_name, array('id' => $_GET['id']));
         // print alert, that the entry was deleted
@@ -396,6 +426,9 @@ function zdb_render_page($page)
         }
 
         require_once('views/list.php');
+
+    } else if ($_GET["page"] == $page['slug'] . "-add") {
+        require_once('views/edit.php');
     } else {
         require_once('views/list.php');
     }
@@ -448,10 +481,25 @@ function zdb_page_by_slug($type)
 }
 
 // a function that takes a field description and returns the html for the input field
-function zdb_render_field($field, $data = null)
+function zdb_render_field($field, $context = [])
 {
 
+    // deconstruct context
+    $parent = $context["parent"] ?? null;
+
+    // if it has a parent, add the parent name to the field name
+    if ($parent) {
+        // when the name is not defined, use the parent name
+        if (empty($field["name"]))
+            $field["name"] = $parent["name"];
+        else
+            $field["name"] = $parent["name"] . "." . $field["name"];
+
+        $field["name"] .= "[0]";
+    }
+
     $name = $field["name"];
+
     // if field is a text input
     if ($field["type"] == "text") {
         echo "<input type='text' name='" . $name . "' id='" . $name . "' value='" . ($field["value"] ?? "") . "' size='40' aria-required='true' autocapitalize='none' autocorrect='off' maxlength='60'>";
@@ -502,7 +550,7 @@ function zdb_render_field($field, $data = null)
     } else if ($field["type"] == "object") {
         echo "<div class='zdb-object-container'>";
         foreach ($field["fields"] as $subfield) {
-            zdb_render_field($subfield);
+            zdb_render_field($subfield, ["parent" => $field]);
         }
         echo "</div>";
     } else if ($field["type"] == "array") {
@@ -510,7 +558,7 @@ function zdb_render_field($field, $data = null)
         $uniqid = uniqid();
         echo "<div class='zdb-prototype' style='display: none;'>";
         echo "<div class='zdb-array-element'>";
-        zdb_render_field($field["of"]);
+        zdb_render_field($field["of"], ["parent" => $field]);
         echo "</div>";
         echo "</div>";
         echo "<div class='zdb-array-container'><div  class='zdb-spawn'></div>";
@@ -556,6 +604,14 @@ function zdb_tablename($slug)
 {
     global $wpdb;
     return $wpdb->prefix . "zdb_" . $slug . "s";
+}
+
+function zdb_slug($tablename)
+{
+    global $wpdb;
+    $plural = str_replace($wpdb->prefix . "zdb_", "", $tablename);
+    // remove the last s
+    return substr($plural, 0, -1);
 }
 
 function zdb_populate_references(&$object, $slug)

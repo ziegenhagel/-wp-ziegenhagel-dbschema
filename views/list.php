@@ -1,5 +1,6 @@
 <?php
 /** @var TYPE_NAME $page */
+/** @var TYPE_NAME $data */
 
 echo "<h1 class='wp-heading-inline'>" . $page["titlePlural"] . "</h1>";
 echo "<p>" . ($page["description"] ?? "Hier können Sie alle " . $page["titlePlural"] . " verwalten und bearbeiten.") . "</p>";

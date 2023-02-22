@@ -27,14 +27,18 @@ echo "<input type='submit' value='Speichern' class='button button-primary'>";
 echo "</form>";
 
 ?>
+
+<pre id="form-values" style="background-color: #eee; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px;white-space: pre-wrap;word-wrap: break-word;">
+
+</pre>
 <script>
 
     // via jquery, show all the form field values
     jQuery(document).ready(function () {
-        jQuery("form").submit(function (e) {
-            e.preventDefault();
-            var data = jQuery(this).serializeArray();
-            console.log(data);
+        // every time the form changes, show the values into the #form-values div
+        jQuery("form").change(function () {
+            // pretty print the values
+            jQuery("#form-values").html(JSON.stringify(jQuery(this).serializeArray(), null, 2));
         });
     });
 </script>

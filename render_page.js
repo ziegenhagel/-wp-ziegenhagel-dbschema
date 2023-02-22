@@ -8,6 +8,20 @@ function zdb_copy_element(src, dst) {
 }
  */
 function zdb_copy_element(prototype, spawn) {
+
+    /*
+    // if the prototypes name attribute ends with [1] then we need to increment the number
+    var name = jQuery(prototype).find('*[name]').first().attr('name');
+    var name_parts = name.split(/\[(\d+)\]$/);
+    console.log("zdb_copy_element: name_parts = " + name_parts);
+
+    if(name_parts[1] != undefined) {
+        let new_name = name_parts[0] + "[" + (parseInt(name_parts[1]) + 1) + "]";
+        console.log("zdb_copy_element: new_name = " + new_name);
+        jQuery(prototype).find('*[name]').first().attr('name', new_name);
+    }
+     */
+
     jQuery(spawn).append(jQuery(prototype).html());
     console.log("zdb_copy_element: " + prototype + " -> " + spawn);
 }
