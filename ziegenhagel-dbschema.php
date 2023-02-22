@@ -403,6 +403,9 @@ function zdb_render_page($page)
 
     // load the style sheet
     wp_enqueue_style('zdb', plugins_url('render_page.css', __FILE__));
+
+    // load the script
+    wp_enqueue_script('zdb', plugins_url('render_page.js', __FILE__));
 }
 
 // get the data from the database
@@ -496,6 +499,28 @@ function zdb_render_field($field, $data = null)
             echo "<option value='" . $ref_row["id"] . "'>" . $ref_row[$ref_page["preview_fields"][0]] . "</option>";
         }
         echo "</select>";
+    } else if ($field["type"] == "object") {
+        echo "<div class='zdb-object-container'>";
+        foreach ($field["fields"] as $subfield) {
+            zdb_render_field($subfield);
+        }
+        echo "</div>";
+    } else if ($field["type"] == "array") {
+
+        $uniqid = uniqid();
+        echo "<div class='zdb-prototype' style='display: none;'>";
+        echo "<div class='zdb-array-element'>";
+        zdb_render_field($field["of"]);
+        echo "</div>";
+        echo "</div>";
+        echo "<div class='zdb-array-container'><div  class='zdb-spawn'></div>";
+        echo "<input type='button' class='button button-secondary' value='Neues Element hinzufügen' id='zdb_spawn_prototype_btn" . $uniqid . "' onclick='zdb_spawn_prototype(this)'>";
+        echo "</div>";
+        echo "<script>document.addEventListener('DOMContentLoaded', function() {
+                // press the button to spawn the prototype
+                document.getElementById('zdb_spawn_prototype_btn" . $uniqid . "').click();
+            });</script>";
+
     } else {
         echo "Field type not found.";
     }
@@ -505,10 +530,7 @@ function zdb_render_field($field, $data = null)
 function zdb_get_object($slug, $id)
 {
     global $wpdb;
-
-    $page = zdb_page_by_slug($slug);
-
-    $prepared = $wpdb->prepare("SELECT * FROM " . $page["table"] . " WHERE id = %d", $id);
+    $prepared = $wpdb->prepare("SELECT * FROM " . zdb_tablename($slug) . " WHERE id = %d", $id);
     $object = $wpdb->get_row($prepared, ARRAY_A);
 
     // populate the references

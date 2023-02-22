@@ -47,7 +47,7 @@
     },
     {
       "name": "favouriteWords",
-      "title": "Lieblingswort",
+      "title": "Lieblingsworte",
       "type": "array",
       "of": {
         "type": "text"

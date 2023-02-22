@@ -9,3 +9,21 @@ label {
 label span.description {
     color: #9f9f9f;
 }
+
+.zdb-array-element {
+    margin-bottom: 5px;
+}
+
+.zdb-array-container {
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+.zdb-object-container {
+    display: flex;
+    width: 100%;
+}
+
+.zdb-object-container * {
+    flex: 1;
+}
