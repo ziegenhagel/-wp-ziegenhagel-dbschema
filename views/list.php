@@ -1,7 +1,7 @@
 <?php
 /** @var TYPE_NAME $page */
 
-echo "<h1>" . $page["titlePlural"] . "</h1>";
+echo "<h1 class='wp-heading-inline'>" . $page["titlePlural"] . "</h1>";
 echo "<p>" . ($page["description"] ?? "Hier können Sie alle " . $page["titlePlural"] . " verwalten und bearbeiten.") . "</p>";
 
 // make a table with all the data

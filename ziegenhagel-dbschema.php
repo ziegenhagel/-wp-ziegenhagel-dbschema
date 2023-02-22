@@ -44,7 +44,7 @@ foreach ($schemas as $schema) {
     $fields = zdb_fields_to_sql_object($schema['fields'], $table_name);
 
     // register the table
-    $table_name = $table_name . "s";
+    $table_name = zdb_tablename($schema['name']);
     zdb_register_new_table($table_name, $fields);
 
     // register for the admin menu
@@ -327,8 +327,7 @@ function zdb_admin_menu()
             $page['title'],
             $options['capability'] ?? 'manage_options',
             $page['slug'],
-            $function = function () use ($page) {
-                zdb_render_page($page);
+            function () {
             },
             $options['menu_icon'],
             $options['menu_position'] ?? 100
@@ -363,7 +362,7 @@ function zdb_admin_menu()
 // render page
 function zdb_render_page($page)
 {
-    global $tables;
+    global $tables, $wpdb;
 
     // get the table name
     $table_name = $page['table'];
@@ -375,13 +374,32 @@ function zdb_render_page($page)
     $data = zdb_get_data($page);
 
     // render the page
+    echo "<div class='wrap'>";
     if (isset($_GET['action']) && $_GET['action'] == 'edit') {
         require_once('views/edit.php');
     } else if ($_GET["page"] == $page['slug'] . "-add") {
         require_once('views/edit.php');
+    } else if ($_GET["page"] == $page['slug'] && $_GET["action"] == "delete") {
+
+        $success = $wpdb->delete($table_name, array('id' => $_GET['id']));
+        // print alert, that the entry was deleted
+        echo '<div class="notice notice-' . ($success ? 'success' : 'error') . ' is-dismissible">
+            <p>' . __($success ? 'Eintrag wurde gelöscht.' : 'Eintrag konnte nicht gelöscht werden.') . '</p>
+        </div>';
+
+        // remove the corresponding entry from the data
+        foreach ($data as $key => $row) {
+            if ($row['id'] == $_GET['id']) {
+                unset($data[$key]);
+                break;
+            }
+        }
+
+        require_once('views/list.php');
     } else {
         require_once('views/list.php');
     }
+    echo "</div>";
 
     // load the style sheet
     wp_enqueue_style('zdb', plugins_url('render_page.css', __FILE__));
@@ -470,8 +488,72 @@ function zdb_render_field($field, $data = null)
     } // if field is a checkbox
     else if ($field["type"] == "checkbox") {
         echo "<input type='checkbox' name='" . $name . "' id='" . $name . "' value='1'>";
+    } else if ($field["type"] == "reference") {
+        $ref_page = zdb_page_by_slug($field["to"]["type"]);
+        $ref_data = zdb_get_objects($ref_page["slug"]);
+        echo "<select name='" . $name . "' id='" . $name . "'>";
+        foreach ($ref_data as $ref_row) {
+            echo "<option value='" . $ref_row["id"] . "'>" . $ref_row[$ref_page["preview_fields"][0]] . "</option>";
+        }
+        echo "</select>";
     } else {
         echo "Field type not found.";
+    }
+}
+
+// query function to get the data from the database
+function zdb_get_object($slug, $id)
+{
+    global $wpdb;
+
+    $page = zdb_page_by_slug($slug);
+
+    $prepared = $wpdb->prepare("SELECT * FROM " . $page["table"] . " WHERE id = %d", $id);
+    $object = $wpdb->get_row($prepared, ARRAY_A);
+
+    // populate the references
+    foreach ($page["fields"] as $field) {
+        if (isset($field["to"])) {
+            $ref_page = zdb_page_by_slug($field["to"]["type"]);
+            $prepared = $wpdb->prepare("SELECT " . $ref_page["preview_fields"][0] . " FROM " . $ref_page["table"] . " WHERE id = %d", $object[$field["name"] . "Id"]);
+            $object[$field["name"]] = $wpdb->get_col($prepared)[0];
+        }
+    }
+
+    return $object;
+}
+
+function zdb_get_objects($slug)
+{
+    global $wpdb;
+    $objects = $wpdb->get_results("SELECT * FROM " . zdb_tablename($slug), ARRAY_A);
+
+    // populate the references for each object using the zdb_populate_references function
+    foreach ($objects as &$object) {
+        zdb_populate_references($object, $slug);
+    }
+
+    return $objects;
+}
+
+function zdb_tablename($slug)
+{
+    global $wpdb;
+    return $wpdb->prefix . "zdb_" . $slug . "s";
+}
+
+function zdb_populate_references(&$object, $slug)
+{
+    global $wpdb;
+
+    $page = zdb_page_by_slug($slug);
+
+    // populate the references
+    foreach ($page["fields"] as $field) {
+        if (isset($field["to"]) && isset($object[$field["name"] . "Id"])) {
+            $prepared = $wpdb->prepare("SELECT * FROM " . zdb_tablename($field["to"]["type"]) . " WHERE id = %d", $object[$field["name"] . "Id"]);
+            $object[$field["name"]] = $wpdb->get_row($prepared, ARRAY_A);
+        }
     }
 }
 
